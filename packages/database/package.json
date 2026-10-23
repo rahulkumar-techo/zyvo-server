@@ -12,9 +12,9 @@
     }
   },
   "scripts": {
-    "build": "prisma generate --config=prisma.config.ts && tsc",
+    "build": "prisma generate --config=prisma.config.ts --no-engine && tsc",
     "check-types": "tsc --noEmit",
-    "db:generate": "prisma generate --config=prisma.config.ts",
+    "db:generate": "prisma generate --config=prisma.config.ts --no-engine",
     "db:push": "prisma db push --config=prisma.config.ts",
     "db:migrate": "prisma migrate dev --config=prisma.config.ts",
     "seed": "tsx prisma/seed/index.ts"
