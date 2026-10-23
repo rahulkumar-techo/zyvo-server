@@ -34,7 +34,7 @@ services:
       # Uses local postgres inside docker network
       DATABASE_URL: postgresql://postgres:root@postgres:5432/zyvo
       DATABASE_URL_DEV: postgresql://postgres:root@postgres:5432/zyvo
-      DATABASE_URL_PROD: ${DATABASE_URL_PROD}
+      DATABASE_URL_PROD: postgresql://postgres:root@postgres:5432/zyvo
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-changeme-access-secret}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-changeme-refresh-secret}
     depends_on:
