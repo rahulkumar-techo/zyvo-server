@@ -1,0 +1,15 @@
+model Rating {
+  id         String   @id @default(uuid()) @db.Uuid
+  tripId     String   @unique @map("trip_id") @db.Uuid
+  raterId    String   @map("rater_id") @db.Uuid
+  rateeId    String   @map("ratee_id") @db.Uuid
+  score      Int      @db.SmallInt
+  feedback   String?  @db.Text
+  tags       String[]
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([rateeId])
+  @@index([tripId])
+  @@map("ratings")
+  @@schema("ratings")
+}

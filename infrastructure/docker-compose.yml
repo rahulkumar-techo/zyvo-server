@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zyvo-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: zyvo
+      POSTGRES_PASSWORD: zyvo_secret
+      POSTGRES_DB: zyvo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zyvo -d zyvo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: apps/api-gateway/Dockerfile
+    ports:
+      - "4000:4000"
+    environment:
+      - PORT=4000
+      - HOST=0.0.0.0
+      - AUTH_SERVICE_URL=http://auth-service:4001
+    depends_on:
+      - auth-service
+
+  auth-service:
+    build:
+      context: ..
+      dockerfile: apps/auth-service/Dockerfile
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://zyvo:zyvo_secret@postgres:5432/zyvo?schema=auth
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

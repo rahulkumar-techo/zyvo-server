@@ -1,0 +1,79 @@
+model PaymentMethod {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  type       String   @db.VarChar(30)
+  provider   String   @db.VarChar(50)
+  token      String   @db.VarChar(255)
+  last4      String?  @db.VarChar(4)
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payments   Payment[]
+
+  @@index([userId])
+  @@map("payment_methods")
+  @@schema("payments")
+}
+
+model PaymentIntent {
+  id             String    @id @default(uuid()) @db.Uuid
+  tripId         String    @map("trip_id") @db.Uuid
+  passengerId    String    @map("passenger_id") @db.Uuid
+  amountPaise    Int       @map("amount_paise")
+  currency       String    @default("INR") @db.VarChar(3)
+  status         String    @default("requires_payment_method") @db.VarChar(30)
+  idempotencyKey String?   @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payments       Payment[]
+
+  @@index([tripId])
+  @@index([passengerId])
+  @@map("payment_intents")
+  @@schema("payments")
+}
+
+model Payment {
+  id               String         @id @default(uuid()) @db.Uuid
+  paymentIntentId  String?        @map("payment_intent_id") @db.Uuid
+  tripId           String         @map("trip_id") @db.Uuid
+  passengerId      String         @map("passenger_id") @db.Uuid
+  paymentMethodId  String?        @map("payment_method_id") @db.Uuid
+  amountPaise      Int            @map("amount_paise")
+  status           String         @default("initiated") @db.VarChar(20)
+  providerTxnId    String?        @unique @map("provider_txn_id") @db.VarChar(100)
+  idempotencyKey   String?        @unique @map("idempotency_key") @db.VarChar(100)
+  capturedAt       DateTime?      @map("captured_at") @db.Timestamptz(6)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  intent           PaymentIntent? @relation(fields: [paymentIntentId], references: [id], onDelete: SetNull)
+  paymentMethod    PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  refunds          PaymentRefund[]
+
+  @@index([tripId])
+  @@index([passengerId])
+  @@map("payments")
+  @@schema("payments")
+}
+
+model PaymentRefund {
+  id             String    @id @default(uuid()) @db.Uuid
+  paymentId      String    @map("payment_id") @db.Uuid
+  amountPaise    Int       @map("amount_paise")
+  reason         String?   @db.VarChar(255)
+  status         String    @default("pending") @db.VarChar(20)
+  idempotencyKey String?   @unique @map("idempotency_key") @db.VarChar(100)
+  providerTxnId  String?   @unique @map("provider_txn_id") @db.VarChar(100)
+  processedAt    DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payment        Payment   @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_refunds")
+  @@schema("payments")
+}

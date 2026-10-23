@@ -1,0 +1,48 @@
+model Wallet {
+  id           String              @id @default(uuid()) @db.Uuid
+  userId       String              @unique @map("user_id") @db.Uuid
+  balancePaise Int                 @default(0) @map("balance_paise")
+  currency     String              @default("INR") @db.VarChar(3)
+  status       String              @default("active") @db.VarChar(20)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  transactions WalletTransaction[]
+  ledgerEntries LedgerEntry[]
+
+  @@map("wallets")
+  @@schema("wallet")
+}
+
+model WalletTransaction {
+  id             String      @id @default(uuid()) @db.Uuid
+  walletId       String      @map("wallet_id") @db.Uuid
+  amountPaise    Int         @map("amount_paise")
+  type           String      @db.VarChar(30)
+  status         String      @default("completed") @db.VarChar(20)
+  referenceId    String?     @map("reference_id") @db.VarChar(100)
+  idempotencyKey String?     @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  wallet         Wallet      @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@map("wallet_transactions")
+  @@schema("wallet")
+}
+
+model LedgerEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  walletId     String   @map("wallet_id") @db.Uuid
+  entryType    String   @map("entry_type") @db.VarChar(10)
+  amountPaise  Int      @map("amount_paise")
+  balanceAfter Int      @map("balance_after")
+  description  String   @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  wallet       Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@map("ledger_entries")
+  @@schema("wallet")
+}

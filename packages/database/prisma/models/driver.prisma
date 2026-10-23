@@ -1,0 +1,61 @@
+model Driver {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  licenseNumber  String   @unique @map("license_number") @db.VarChar(50)
+  status         String   @default("offline") @db.VarChar(20)
+  kycStatus      String   @default("pending") @map("kyc_status") @db.VarChar(20)
+  ratingAvg      Decimal  @default(5.00) @map("rating_avg") @db.Decimal(3, 2)
+  tripCount      Int      @default(0) @map("trip_count")
+  isAvailable    Boolean  @default(false) @map("is_available")
+  currentLat     Decimal? @map("current_lat") @db.Decimal(10, 7)
+  currentLng     Decimal? @map("current_lng") @db.Decimal(10, 7)
+  lastLocationAt DateTime? @map("last_location_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  vehicles       Vehicle[]
+  documents      DriverDocument[]
+
+  @@index([status])
+  @@index([isAvailable])
+  @@map("drivers")
+  @@schema("drivers")
+}
+
+model Vehicle {
+  id           String   @id @default(uuid()) @db.Uuid
+  driverId     String   @map("driver_id") @db.Uuid
+  make         String   @db.VarChar(50)
+  model        String   @db.VarChar(50)
+  year         Int
+  plateNumber  String   @unique @map("plate_number") @db.VarChar(20)
+  color        String   @db.VarChar(30)
+  category     String   @default("standard") @db.VarChar(30)
+  capacity     Int      @default(4)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  driver       Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@map("vehicles")
+  @@schema("drivers")
+}
+
+model DriverDocument {
+  id           String   @id @default(uuid()) @db.Uuid
+  driverId     String   @map("driver_id") @db.Uuid
+  documentType String   @map("document_type") @db.VarChar(50)
+  documentUrl  String   @map("document_url") @db.Text
+  status       String   @default("pending") @db.VarChar(20)
+  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  driver       Driver   @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@map("driver_documents")
+  @@schema("drivers")
+}

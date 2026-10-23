@@ -1,0 +1,24 @@
+{
+  "name": "zyvo-server",
+  "version": "1.0.0",
+  "description": "Zyvo microservices monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "test": "turbo test",
+    "clean": "turbo clean"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@12.15.0",
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@zyvo/typescript-config": "workspace:*",
+    "turbo": "^2.11.10",
+    "typescript": "^7.0.2"
+  }
+}

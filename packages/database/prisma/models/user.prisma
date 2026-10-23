@@ -1,0 +1,49 @@
+model User {
+  id              String   @id @default(uuid()) @db.Uuid
+  phone           String   @unique @db.VarChar(20)
+  email           String?  @unique @db.VarChar(255)
+  name            String   @db.VarChar(100)
+  isPhoneVerified Boolean  @default(false) @map("is_phone_verified")
+  isEmailVerified Boolean  @default(false) @map("is_email_verified")
+  status          String   @default("active") @db.VarChar(20)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile           UserProfile?
+  emergencyContacts UserEmergencyContact[]
+
+  @@map("users")
+  @@schema("users")
+}
+
+model UserProfile {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  avatarUrl String?  @map("avatar_url") @db.Text
+  gender    String?  @db.VarChar(20)
+  ratingAvg Decimal  @default(5.00) @map("rating_avg") @db.Decimal(3, 2)
+  tripCount Int      @default(0) @map("trip_count")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+  @@schema("users")
+}
+
+model UserEmergencyContact {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  name         String   @db.VarChar(100)
+  phone        String   @db.VarChar(20)
+  relationship String?  @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_emergency_contacts")
+  @@schema("users")
+}

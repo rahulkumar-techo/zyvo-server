@@ -1,0 +1,31 @@
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  channel   String    @db.VarChar(20)
+  title     String    @db.VarChar(200)
+  body      String    @db.Text
+  data      Json?
+  status    String    @default("pending") @db.VarChar(20)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([status])
+  @@map("notifications")
+  @@schema("notifications")
+}
+
+model NotificationTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(50)
+  channel   String   @db.VarChar(20)
+  subject   String?  @db.VarChar(200)
+  body      String   @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("notification_templates")
+  @@schema("notifications")
+}
