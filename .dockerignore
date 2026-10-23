@@ -14,3 +14,4 @@ ARCHITECTURE.md
 RULES.md
 SECURITY.md
 infrastructure
+!infrastructure/nginx
