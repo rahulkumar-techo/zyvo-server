@@ -1,4 +1,5 @@
 FROM node:20-alpine AS base
+RUN sed -i 's|https://|http://|g' /etc/apk/repositories
 RUN apk add --no-cache ca-certificates openssl
 RUN corepack enable && corepack prepare pnpm@latest --activate
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
