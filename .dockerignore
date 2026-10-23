@@ -1,0 +1,16 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.turbo
+**/.turbo
+.env
+**/.env
+*.log
+.git
+.gitignore
+README.md
+ARCHITECTURE.md
+RULES.md
+SECURITY.md
+infrastructure

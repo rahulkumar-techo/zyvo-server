@@ -1,0 +1,62 @@
+services:
+  # ── Local PostgreSQL (dev only) ─────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: zyvo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: zyvo
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d zyvo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Auth Service ────────────────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: .
+      target: auth-service
+    container_name: zyvo-auth-service
+    restart: unless-stopped
+    ports:
+      - "4001:4001"
+    environment:
+      NODE_ENV: production
+      PORT: 4001
+      HOST: 0.0.0.0
+      # Uses local postgres inside docker network
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/zyvo
+      DATABASE_URL_DEV: postgresql://postgres:root@postgres:5432/zyvo
+      DATABASE_URL_PROD: ${DATABASE_URL_PROD}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-changeme-access-secret}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-changeme-refresh-secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── API Gateway ─────────────────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: .
+      target: api-gateway
+    container_name: zyvo-api-gateway
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      AUTH_SERVICE_URL: http://auth-service:4001
+    depends_on:
+      - auth-service
+
+volumes:
+  postgres_data:
