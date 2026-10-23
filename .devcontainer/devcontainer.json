@@ -1,0 +1,16 @@
+{
+  "name": "Zyvo Server Monorepo",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:20",
+  "forwardPorts": [4000, 4001],
+  "portsAttributes": {
+    "4000": {
+      "label": "API Gateway",
+      "onAutoForward": "notify"
+    },
+    "4001": {
+      "label": "Auth Service",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "npm install -g pnpm && pnpm install"
+}
