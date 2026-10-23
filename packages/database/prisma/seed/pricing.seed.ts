@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "../../src/generated/client/index.js";
 
 // All monetary values in integer paise (1 INR = 100 paise)
 export const DEFAULT_PRICING_RULES = [

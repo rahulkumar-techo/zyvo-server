@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../../src/generated/client/index.js";
 import { seedRoles } from "./roles.seed.js";
 import { seedPricing } from "./pricing.seed.js";
 

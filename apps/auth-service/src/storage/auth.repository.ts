@@ -72,7 +72,7 @@ export class AuthRepository {
   }
 
   async createUser(user: UserRecord): Promise<UserRecord> {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.user.create({
         data: {
           id: user.id,

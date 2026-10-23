@@ -20,10 +20,7 @@ COPY . .
 # 1. Build logger
 RUN pnpm --filter @zyvo/logger build
 
-# 2. Generate Prisma client (engines download works in Docker build)
-RUN pnpm --filter @zyvo/database db:generate
-
-# 3. Build database package
+# 2. Build database package (using pre-generated Prisma client)
 RUN pnpm --filter @zyvo/database build
 
 # 4. Build apps

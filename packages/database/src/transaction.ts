@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "./generated/client/index.js";
 
 export type TransactionClient = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 

@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "../../src/generated/client/index.js";
 
 export const DEFAULT_ROLES = [
   { name: "admin", description: "Platform administrator with full privileges" },

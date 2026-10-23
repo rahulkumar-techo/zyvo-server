@@ -1,0 +1,501 @@
+model Credentials {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @unique @map("user_id") @db.Uuid
+  passwordHash   String    @map("password_hash") @db.VarChar(255)
+  passwordAlgo   String    @default("scrypt") @map("password_algo") @db.VarChar(50)
+  failedAttempts Int       @default(0) @map("failed_attempts")
+  lockedUntil    DateTime? @map("locked_until") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("credentials")
+  @@schema("auth")
+}
+
+model RefreshSession {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tokenHash  String   @unique @map("token_hash") @db.VarChar(64)
+  deviceId   String?  @map("device_id") @db.VarChar(100)
+  deviceName String?  @map("device_name") @db.VarChar(100)
+  ipAddress  String?  @map("ip_address") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.Text
+  isRevoked  Boolean  @default(false) @map("is_revoked")
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_sessions")
+  @@schema("auth")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userRoles UserRole[]
+
+  @@map("roles")
+  @@schema("auth")
+}
+
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+  @@schema("auth")
+}
+
+model Driver {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @unique @map("user_id") @db.Uuid
+  licenseNumber  String    @unique @map("license_number") @db.VarChar(50)
+  status         String    @default("offline") @db.VarChar(20)
+  kycStatus      String    @default("pending") @map("kyc_status") @db.VarChar(20)
+  ratingAvg      Decimal   @default(5.00) @map("rating_avg") @db.Decimal(3, 2)
+  tripCount      Int       @default(0) @map("trip_count")
+  isAvailable    Boolean   @default(false) @map("is_available")
+  currentLat     Decimal?  @map("current_lat") @db.Decimal(10, 7)
+  currentLng     Decimal?  @map("current_lng") @db.Decimal(10, 7)
+  lastLocationAt DateTime? @map("last_location_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  vehicles  Vehicle[]
+  documents DriverDocument[]
+
+  @@index([status])
+  @@index([isAvailable])
+  @@map("drivers")
+  @@schema("drivers")
+}
+
+model Vehicle {
+  id          String   @id @default(uuid()) @db.Uuid
+  driverId    String   @map("driver_id") @db.Uuid
+  make        String   @db.VarChar(50)
+  model       String   @db.VarChar(50)
+  year        Int
+  plateNumber String   @unique @map("plate_number") @db.VarChar(20)
+  color       String   @db.VarChar(30)
+  category    String   @default("standard") @db.VarChar(30)
+  capacity    Int      @default(4)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@map("vehicles")
+  @@schema("drivers")
+}
+
+model DriverDocument {
+  id           String    @id @default(uuid()) @db.Uuid
+  driverId     String    @map("driver_id") @db.Uuid
+  documentType String    @map("document_type") @db.VarChar(50)
+  documentUrl  String    @map("document_url") @db.Text
+  status       String    @default("pending") @db.VarChar(20)
+  verifiedAt   DateTime? @map("verified_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([driverId])
+  @@map("driver_documents")
+  @@schema("drivers")
+}
+
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  channel   String    @db.VarChar(20)
+  title     String    @db.VarChar(200)
+  body      String    @db.Text
+  data      Json?
+  status    String    @default("pending") @db.VarChar(20)
+  sentAt    DateTime? @map("sent_at") @db.Timestamptz(6)
+  readAt    DateTime? @map("read_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([status])
+  @@map("notifications")
+  @@schema("notifications")
+}
+
+model NotificationTemplate {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(50)
+  channel   String   @db.VarChar(20)
+  subject   String?  @db.VarChar(200)
+  body      String   @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("notification_templates")
+  @@schema("notifications")
+}
+
+model PaymentMethod {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  type      String   @db.VarChar(30)
+  provider  String   @db.VarChar(50)
+  token     String   @db.VarChar(255)
+  last4     String?  @db.VarChar(4)
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payments Payment[]
+
+  @@index([userId])
+  @@map("payment_methods")
+  @@schema("payments")
+}
+
+model PaymentIntent {
+  id             String   @id @default(uuid()) @db.Uuid
+  tripId         String   @map("trip_id") @db.Uuid
+  passengerId    String   @map("passenger_id") @db.Uuid
+  amountPaise    Int      @map("amount_paise")
+  currency       String   @default("INR") @db.VarChar(3)
+  status         String   @default("requires_payment_method") @db.VarChar(30)
+  idempotencyKey String?  @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payments Payment[]
+
+  @@index([tripId])
+  @@index([passengerId])
+  @@map("payment_intents")
+  @@schema("payments")
+}
+
+model Payment {
+  id              String    @id @default(uuid()) @db.Uuid
+  paymentIntentId String?   @map("payment_intent_id") @db.Uuid
+  tripId          String    @map("trip_id") @db.Uuid
+  passengerId     String    @map("passenger_id") @db.Uuid
+  paymentMethodId String?   @map("payment_method_id") @db.Uuid
+  amountPaise     Int       @map("amount_paise")
+  status          String    @default("initiated") @db.VarChar(20)
+  providerTxnId   String?   @unique @map("provider_txn_id") @db.VarChar(100)
+  idempotencyKey  String?   @unique @map("idempotency_key") @db.VarChar(100)
+  capturedAt      DateTime? @map("captured_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  intent        PaymentIntent?  @relation(fields: [paymentIntentId], references: [id], onDelete: SetNull)
+  paymentMethod PaymentMethod?  @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  refunds       PaymentRefund[]
+
+  @@index([tripId])
+  @@index([passengerId])
+  @@map("payments")
+  @@schema("payments")
+}
+
+model PaymentRefund {
+  id             String    @id @default(uuid()) @db.Uuid
+  paymentId      String    @map("payment_id") @db.Uuid
+  amountPaise    Int       @map("amount_paise")
+  reason         String?   @db.VarChar(255)
+  status         String    @default("pending") @db.VarChar(20)
+  idempotencyKey String?   @unique @map("idempotency_key") @db.VarChar(100)
+  providerTxnId  String?   @unique @map("provider_txn_id") @db.VarChar(100)
+  processedAt    DateTime? @map("processed_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@map("payment_refunds")
+  @@schema("payments")
+}
+
+model PlatformSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique @db.VarChar(100)
+  value       Json
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("platform_settings")
+  @@schema("platform")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  actorId      String?  @map("actor_id") @db.Uuid
+  action       String   @db.VarChar(100)
+  resourceType String   @map("resource_type") @db.VarChar(50)
+  resourceId   String?  @map("resource_id") @db.VarChar(100)
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([actorId])
+  @@index([resourceType])
+  @@map("audit_logs")
+  @@schema("platform")
+}
+
+model PricingRule {
+  id                   String   @id @default(uuid()) @db.Uuid
+  category             String   @unique @db.VarChar(30)
+  baseFarePaise        Int      @map("base_fare_paise")
+  perKmRatePaise       Int      @map("per_km_rate_paise")
+  perMinuteRatePaise   Int      @map("per_minute_rate_paise")
+  minimumFarePaise     Int      @map("minimum_fare_paise")
+  cancellationFeePaise Int      @map("cancellation_fee_paise")
+  isActive             Boolean  @default(true) @map("is_active")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("pricing_rules")
+  @@schema("pricing")
+}
+
+model FareEstimate {
+  id                String   @id @default(uuid()) @db.Uuid
+  category          String   @db.VarChar(30)
+  distanceMeters    Int      @map("distance_meters")
+  durationSeconds   Int      @map("duration_seconds")
+  baseFarePaise     Int      @map("base_fare_paise")
+  distanceFarePaise Int      @map("distance_fare_paise")
+  timeFarePaise     Int      @map("time_fare_paise")
+  surgeMultiplier   Decimal  @default(1.00) @map("surge_multiplier") @db.Decimal(4, 2)
+  totalFarePaise    Int      @map("total_fare_paise")
+  expiresAt         DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("fare_estimates")
+  @@schema("pricing")
+}
+
+model SurgeZone {
+  id          String   @id @default(uuid()) @db.Uuid
+  zoneName    String   @map("zone_name") @db.VarChar(100)
+  multiplier  Decimal  @default(1.00) @db.Decimal(4, 2)
+  boundaryGeo Json     @map("boundary_geo")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("surge_zones")
+  @@schema("pricing")
+}
+
+model Rating {
+  id        String   @id @default(uuid()) @db.Uuid
+  tripId    String   @unique @map("trip_id") @db.Uuid
+  raterId   String   @map("rater_id") @db.Uuid
+  rateeId   String   @map("ratee_id") @db.Uuid
+  score     Int      @db.SmallInt
+  feedback  String?  @db.Text
+  tags      String[]
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([rateeId])
+  @@index([tripId])
+  @@map("ratings")
+  @@schema("ratings")
+}
+
+model Trip {
+  id                 String    @id @default(uuid()) @db.Uuid
+  passengerId        String    @map("passenger_id") @db.Uuid
+  driverId           String?   @map("driver_id") @db.Uuid
+  vehicleId          String?   @map("vehicle_id") @db.Uuid
+  status             String    @default("requested") @db.VarChar(30)
+  pickupAddress      String    @map("pickup_address") @db.Text
+  pickupLat          Decimal   @map("pickup_lat") @db.Decimal(10, 7)
+  pickupLng          Decimal   @map("pickup_lng") @db.Decimal(10, 7)
+  dropoffAddress     String    @map("dropoff_address") @db.Text
+  dropoffLat         Decimal   @map("dropoff_lat") @db.Decimal(10, 7)
+  dropoffLng         Decimal   @map("dropoff_lng") @db.Decimal(10, 7)
+  distanceMeters     Int       @map("distance_meters")
+  durationSeconds    Int       @map("duration_seconds")
+  estimatedFarePaise Int       @map("estimated_fare_paise")
+  actualFarePaise    Int?      @map("actual_fare_paise")
+  surgeMultiplier    Decimal   @default(1.00) @map("surge_multiplier") @db.Decimal(4, 2)
+  idempotencyKey     String?   @unique @map("idempotency_key") @db.VarChar(100)
+  startedAt          DateTime? @map("started_at") @db.Timestamptz(6)
+  completedAt        DateTime? @map("completed_at") @db.Timestamptz(6)
+  cancelledAt        DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason String?   @map("cancellation_reason") @db.VarChar(255)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  events TripEvent[]
+  offers RideOffer[]
+
+  @@index([passengerId])
+  @@index([driverId])
+  @@index([status])
+  @@map("trips")
+  @@schema("trips")
+}
+
+model TripEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  tripId    String   @map("trip_id") @db.Uuid
+  eventType String   @map("event_type") @db.VarChar(50)
+  fromState String?  @map("from_state") @db.VarChar(30)
+  toState   String   @map("to_state") @db.VarChar(30)
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@map("trip_events")
+  @@schema("trips")
+}
+
+model RideOffer {
+  id        String   @id @default(uuid()) @db.Uuid
+  tripId    String   @map("trip_id") @db.Uuid
+  driverId  String   @map("driver_id") @db.Uuid
+  status    String   @default("pending") @db.VarChar(20)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  trip Trip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+
+  @@index([tripId])
+  @@index([driverId])
+  @@index([status])
+  @@map("ride_offers")
+  @@schema("trips")
+}
+
+model User {
+  id              String   @id @default(uuid()) @db.Uuid
+  phone           String   @unique @db.VarChar(20)
+  email           String?  @unique @db.VarChar(255)
+  name            String   @db.VarChar(100)
+  isPhoneVerified Boolean  @default(false) @map("is_phone_verified")
+  isEmailVerified Boolean  @default(false) @map("is_email_verified")
+  status          String   @default("active") @db.VarChar(20)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  profile           UserProfile?
+  emergencyContacts UserEmergencyContact[]
+
+  @@map("users")
+  @@schema("users")
+}
+
+model UserProfile {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  avatarUrl String?  @map("avatar_url") @db.Text
+  gender    String?  @db.VarChar(20)
+  ratingAvg Decimal  @default(5.00) @map("rating_avg") @db.Decimal(3, 2)
+  tripCount Int      @default(0) @map("trip_count")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_profiles")
+  @@schema("users")
+}
+
+model UserEmergencyContact {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  name         String   @db.VarChar(100)
+  phone        String   @db.VarChar(20)
+  relationship String?  @db.VarChar(50)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("user_emergency_contacts")
+  @@schema("users")
+}
+
+model Wallet {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique @map("user_id") @db.Uuid
+  balancePaise Int      @default(0) @map("balance_paise")
+  currency     String   @default("INR") @db.VarChar(3)
+  status       String   @default("active") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  transactions  WalletTransaction[]
+  ledgerEntries LedgerEntry[]
+
+  @@map("wallets")
+  @@schema("wallet")
+}
+
+model WalletTransaction {
+  id             String   @id @default(uuid()) @db.Uuid
+  walletId       String   @map("wallet_id") @db.Uuid
+  amountPaise    Int      @map("amount_paise")
+  type           String   @db.VarChar(30)
+  status         String   @default("completed") @db.VarChar(20)
+  referenceId    String?  @map("reference_id") @db.VarChar(100)
+  idempotencyKey String?  @unique @map("idempotency_key") @db.VarChar(100)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@map("wallet_transactions")
+  @@schema("wallet")
+}
+
+model LedgerEntry {
+  id           String   @id @default(uuid()) @db.Uuid
+  walletId     String   @map("wallet_id") @db.Uuid
+  entryType    String   @map("entry_type") @db.VarChar(10)
+  amountPaise  Int      @map("amount_paise")
+  balanceAfter Int      @map("balance_after")
+  description  String   @db.VarChar(255)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@map("ledger_entries")
+  @@schema("wallet")
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["auth", "users", "drivers", "trips", "pricing", "payments", "wallet", "ratings", "notifications", "platform"]
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/client"
+}
