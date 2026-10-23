@@ -1,48 +1,52 @@
+# Zyvo System Architecture
 
+High-level architecture, service interactions, and request flows for the Zyvo microservices platform.
 
-# System architecture — complete node diagram
+---
 
-```
+## 1. System Topology
+
+```mermaid
 flowchart TB
     subgraph CLIENTS["1. CLIENT LAYER"]
-        PA["Passenger App<br/>Expo + Zustand"]
-        DA["Driver App<br/>Expo + Zustand"]
-        AD["Admin Dashboard<br/>Web"]
+        PA["Passenger App<br/>(Expo + React Native)"]
+        DA["Driver App<br/>(Expo + React Native)"]
+        AD["Admin Dashboard<br/>(Next.js Web)"]
     end
 
     subgraph EDGE["2. EDGE / API LAYER"]
-        LB["Load Balancer / TLS"]
-        GW["API Gateway<br/>Fastify<br/>Rate limit · Request ID · Routing"]
-        JWT["Auth Guard<br/>JWT signature · iss · aud · exp"]
-        POLICY["Route policy<br/>Scopes · Role"]
+        LB["Load Balancer / TLS Termination"]
+        GW["API Gateway (Fastify)<br/>Rate Limiting · Request ID · Upstream Proxy"]
+        JWT["Auth Guard<br/>JWT Validation · Iss · Aud · Exp"]
+        POLICY["Route Policies<br/>Roles · Scopes · Permissions"]
     end
 
-    subgraph IDENTITY["3. IDENTITY"]
-        AUTH["Auth Service<br/>Login · Refresh · Logout"]
-        USERS["User Service<br/>Passenger · Profile"]
-        DRIVERS["Driver Service<br/>KYC · Vehicle · Status"]
+    subgraph IDENTITY["3. IDENTITY DOMAIN"]
+        AUTH["Auth Service<br/>Credentials · Sessions · Refresh Rotation"]
+        USERS["User Service<br/>Passenger Profiles · Contacts"]
+        DRIVERS["Driver Service<br/>KYC · Vehicles · Approval Status"]
     end
 
     subgraph RIDE["4. RIDE DOMAIN"]
-        LOC["Location Service<br/>GPS · Driver availability"]
-        SEARCH["Ride Search / Matching<br/>Nearby drivers · Offers"]
-        FARE["Pricing Service<br/>Fare estimate · Surge"]
-        TRIP["Trip Service<br/>Ride state machine"]
-        MAPS["Maps Adapter<br/>Routes · Distance · ETA"]
+        LOC["Location Service<br/>GPS Ingestion · Geospatial Tracking"]
+        SEARCH["Matching Service<br/>Nearby Search · Driver Offers"]
+        FARE["Pricing Service<br/>Base Fares · Surge Multiplier"]
+        TRIP["Trip Service<br/>Ride State Machine"]
+        MAPS["Maps Adapter<br/>Routing · Distance · ETA"]
     end
 
-    subgraph COMMERCE["5. PAYMENT / POST-TRIP"]
-        PAY["Payment Service<br/>Authorization · Capture · Refund"]
-        WALLET["Wallet / Ledger Service"]
-        RATING["Rating Service"]
-        NOTIFY["Notification Service<br/>Push · SMS · Email"]
+    subgraph COMMERCE["5. PAYMENT & POST-TRIP DOMAIN"]
+        PAY["Payment Service<br/>Auth · Capture · Refunds · Webhooks"]
+        WALLET["Wallet / Ledger Service<br/>Double-entry Bookkeeping (Paise)"]
+        RATING["Rating Service<br/>Reviews & Aggregated Scores"]
+        NOTIFY["Notification Service<br/>Push (FCM/APNs) · SMS · Email"]
     end
 
-    subgraph DATA["6. STORAGE / INFRASTRUCTURE"]
-        PG[("PostgreSQL<br/>Service-owned schemas / DBs")]
-        REDIS[("Redis<br/>Cache · TTL · Geo · Locks")]
-        BUS[["Message Broker<br/>Domain events"]]
-        OBJ[("Object Storage<br/>KYC documents")]
+    subgraph DATA["6. STORAGE & INFRASTRUCTURE"]
+        PG[("PostgreSQL 16+<br/>Multi-Schema Domain Stores")]
+        REDIS[("Redis 7+<br/>TTL Cache · Geo Indexing · Locks")]
+        BUS[["Message Broker<br/>Domain Events · Async Workflows"]]
+        OBJ[("Object Storage (S3/R2)<br/>KYC Documents · Media")]
     end
 
     PA --> LB
@@ -92,8 +96,8 @@ flowchart TB
     BUS --> WALLET
     BUS --> RATING
 
-    DA -. "WebSocket: location updates" .-> GW
-    PA -. "WebSocket: trip updates" .-> GW
+    DA -. "WebSocket: Driver GPS Stream" .-> GW
+    PA -. "WebSocket: Live Trip Tracking" .-> GW
 
     classDef edge fill:#DBEAFE,stroke:#2563EB,color:#1E3A8A
     classDef domain fill:#DCFCE7,stroke:#16A34A,color:#14532D
@@ -106,64 +110,80 @@ flowchart TB
     class AUTH,USERS,DRIVERS identity
 ```
 
-## Request flows — client se database tak
-A. Login and token refresh
+---
 
-```
+## 2. Request Flows
+
+### A. Authentication & Refresh Token Rotation
+
+```mermaid
 sequenceDiagram
-    participant C as Client
-    participant G as API Gateway
-    participant A as Auth Service
-    participant DB as Auth DB
+    autonumber
+    participant C as Client (App / Web)
+    participant G as API Gateway (:4000)
+    participant A as Auth Service (:4001)
+    participant DB as PostgreSQL (Local / Cloud)
 
-    C->>G: POST /api/v1/auth/login
-    G->>A: Forward public auth route
-    A->>DB: Verify credentials
-    DB-->>A: User + password hash
-    A->>A: Verify password
-    A-->>G: Access token + refresh token
-    G-->>C: 200 OK
+    Note over C,DB: Phase 1: User Login
+    C->>G: POST /api/v1/auth/login { phoneOrEmail, password }
+    G->>A: Reverse Proxy -> POST /auth/login
+    A->>DB: Query user & credentials
+    DB-->>A: Record + Scrypt Hash
+    A->>A: Verify Password & Sign JWT Access Token
+    A->>DB: Store RefreshSession (token_hash)
+    A-->>G: 200 OK + Body Tokens + Set-Cookie
+    G-->>C: 200 OK (Tokens in Body & HttpOnly Cookies)
 
-    C->>G: GET /api/v1/rides/estimate + access token
-    G->>G: Verify JWT locally
-    G-->>C: 401 if expired
-    C->>G: POST /api/v1/auth/refresh
-    G->>A: Forward refresh request
-    A->>DB: Validate refresh token / session
-    A-->>G: New access token
-    G-->>C: 200 OK
-    C->>G: Retry original estimate request
-    G->>G: Verify new access token
-
-```
-## B. Ride booking and driver matching
+    Note over C,DB: Phase 2: Token Rotation
+    C->>G: POST /api/v1/auth/refresh (Cookie or Body)
+    G->>A: Reverse Proxy -> POST /auth/refresh
+    A->>DB: Validate token_hash in refresh_sessions
+    DB-->>A: Active session verified
+    A->>DB: Invalidate old token & rotate new token hash
+    A-->>G: 200 OK + New Tokens
+    G-->>C: 200 OK (Rotated Access & Refresh Tokens)
 ```
 
+---
+
+### B. Ride Booking & Concurrency-Safe Matching
+
+```mermaid
 sequenceDiagram
+    autonumber
     participant P as Passenger App
-    participant G as Gateway
-    participant F as Pricing
+    participant G as API Gateway
+    participant F as Pricing Service
     participant T as Trip Service
-    participant M as Matching
-    participant R as Redis
+    participant M as Matching Service
+    participant R as Redis (Geo)
     participant D as Driver App
     participant PAY as Payment Service
 
-    P->>G: POST /rides/estimate
-    G->>F: Origin + destination + category
-    F-->>G: Fare estimate + expiry
-    G-->>P: Estimate
+    P->>G: POST /api/v1/pricing/estimate { pickup, dropoff }
+    G->>F: Calculate base fare, distance & surge
+    F-->>G: Fare estimate + estimateId (5m TTL)
+    G-->>P: Return estimate response
 
-    P->>G: POST /rides
-    G->>T: Create ride with estimateId
-    T->>T: Validate estimate + idempotency
-    T->>PAY: Pre-authorize payment if required
-    T->>M: Request driver matching
-    M->>R: Find eligible nearby drivers
-    M-->>D: Ride offer via WebSocket/push
-    D->>G: Accept ride offer
+    P->>G: POST /api/v1/trips { estimateId, idempotencyKey }
+    G->>T: Create ride request
+    T->>T: Validate idempotency & estimate expiry
+    T->>PAY: Pre-authorize payment hold
+    T->>M: Request nearest driver dispatch
+    M->>R: GEOSEARCH nearby active drivers
+    M-->>D: Push ride offer (15s accept timeout)
+
+    D->>G: POST /api/v1/trips/{id}/accept
     G->>T: Accept offer
-    T->>T: Atomic assignment + state transition
-    T-->>P: Driver assigned
-
+    T->>T: Atomic assignment & state transition (REQUESTED -> ACCEPTED)
+    T-->>P: WebSocket broadcast: Driver assigned with live ETA
 ```
+
+---
+
+## 3. Data Architecture Guidelines
+
+* **Money Representation:** Always stored as integer **paise** (`Int`), never floating point numbers.
+* **Timestamps:** ISO 8601 UTC with microsecond precision (`timestamptz(6)`).
+* **Identifiers:** Universally Unique Identifiers (`UUIDv4`).
+* **Cross-Domain References:** Service databases reference other domain entities strictly by UUID, avoiding physical database-level foreign key locks across decoupled service schemas.
