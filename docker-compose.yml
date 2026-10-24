@@ -42,6 +42,27 @@ services:
       postgres:
         condition: service_healthy
 
+  # ── User Service ────────────────────────────────────────────────────────────
+  user-service:
+    build:
+      context: .
+      target: user-service
+    container_name: zyvo-user-service
+    restart: unless-stopped
+    ports:
+      - "4002:4002"
+    environment:
+      NODE_ENV: production
+      PORT: 4002
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://postgres:root@postgres:5432/zyvo
+      DATABASE_URL_DEV: postgresql://postgres:root@postgres:5432/zyvo
+      DATABASE_URL_PROD: postgresql://postgres:root@postgres:5432/zyvo
+      JWT_SECRET: ${JWT_SECRET:-zyvo-super-secret-jwt-key}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   # ── API Gateway ─────────────────────────────────────────────────────────────
   api-gateway:
     build:
@@ -56,8 +77,10 @@ services:
       PORT: 4000
       HOST: 0.0.0.0
       AUTH_SERVICE_URL: http://auth-service:4001
+      USERS_SERVICE_URL: http://user-service:4002
     depends_on:
       - auth-service
+      - user-service
 
   # ── Nginx Reverse Proxy ─────────────────────────────────────────────────────
   nginx:

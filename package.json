@@ -5,6 +5,9 @@
   "private": true,
   "scripts": {
     "dev": "turbo dev",
+    "dev:gateway": "pnpm --filter @zyvo/api-gateway dev",
+    "dev:auth": "pnpm --filter @zyvo/auth-service dev",
+    "dev:users": "pnpm --filter @zyvo/user-service dev",
     "build": "turbo build",
     "check-types": "turbo check-types",
     "test": "turbo test",

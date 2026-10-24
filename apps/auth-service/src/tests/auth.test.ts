@@ -50,7 +50,11 @@ test("Auth Service - Complete Endpoint Workflow", async (t) => {
 
     assert.equal(response.statusCode, 409);
     const body = JSON.parse(response.payload);
-    assert.equal(body.code, "CONFLICT");
+    assert.equal(body.statusCode, 409);
+    assert.equal(body.code, "PHONE_ALREADY_EXISTS");
+    assert.equal(body.error, "ConflictError");
+    assert.ok(body.endpoint);
+    assert.ok(body.timestamp);
   });
 
   await t.test("1c. POST /auth/register - Rejects registration with missing required inputs", async () => {
@@ -65,7 +69,9 @@ test("Auth Service - Complete Endpoint Workflow", async (t) => {
 
     assert.equal(response.statusCode, 400);
     const body = JSON.parse(response.payload);
+    assert.equal(body.statusCode, 400);
     assert.equal(body.code, "VALIDATION_ERROR");
+    assert.equal(body.error, "ValidationError");
   });
 
   await t.test("2. POST /auth/login - Successfully logs in with phone and issues tokens", async () => {
@@ -91,7 +97,7 @@ test("Auth Service - Complete Endpoint Workflow", async (t) => {
     refreshToken = body.refreshToken;
   });
 
-  await t.test("2b. POST /auth/login - Rejects invalid credentials with 401 UNAUTHENTICATED", async () => {
+  await t.test("2b. POST /auth/login - Rejects invalid credentials with 401 INVALID_CREDENTIALS", async () => {
     const response = await app.inject({
       method: "POST",
       url: "/auth/login",
@@ -103,7 +109,9 @@ test("Auth Service - Complete Endpoint Workflow", async (t) => {
 
     assert.equal(response.statusCode, 401);
     const body = JSON.parse(response.payload);
-    assert.equal(body.code, "UNAUTHENTICATED");
+    assert.equal(body.statusCode, 401);
+    assert.equal(body.code, "INVALID_CREDENTIALS");
+    assert.equal(body.error, "AuthenticationError");
   });
 
   await t.test("3. GET /auth/me - Returns authenticated user with valid Bearer token", async () => {
@@ -130,7 +138,9 @@ test("Auth Service - Complete Endpoint Workflow", async (t) => {
 
     assert.equal(response.statusCode, 401);
     const body = JSON.parse(response.payload);
+    assert.equal(body.statusCode, 401);
     assert.equal(body.code, "UNAUTHENTICATED");
+    assert.equal(body.error, "AuthenticationError");
   });
 
   let rotatedRefreshToken = "";
@@ -166,7 +176,9 @@ test("Auth Service - Complete Endpoint Workflow", async (t) => {
 
     assert.equal(response.statusCode, 401);
     const body = JSON.parse(response.payload);
-    assert.equal(body.code, "UNAUTHENTICATED");
+    assert.equal(body.statusCode, 401);
+    assert.equal(body.code, "INVALID_REFRESH_TOKEN");
+    assert.equal(body.error, "AuthenticationError");
   });
 
   await t.test("5. POST /auth/logout - Invalidates current session", async () => {

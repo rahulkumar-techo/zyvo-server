@@ -29,8 +29,25 @@ services:
       - PORT=4000
       - HOST=0.0.0.0
       - AUTH_SERVICE_URL=http://auth-service:4001
+      - USERS_SERVICE_URL=http://user-service:4002
     depends_on:
       - auth-service
+      - user-service
+
+  user-service:
+    build:
+      context: ..
+      dockerfile: apps/user-service/Dockerfile
+    ports:
+      - "4002:4002"
+    environment:
+      - PORT=4002
+      - HOST=0.0.0.0
+      - DATABASE_URL=postgresql://zyvo:zyvo_secret@postgres:5432/zyvo
+      - JWT_SECRET=zyvo-super-secret-jwt-key
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   auth-service:
     build:

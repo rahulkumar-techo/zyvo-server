@@ -15,6 +15,7 @@
     "@fastify/cors": "^11.3.1",
     "@fastify/jwt": "^10.2.5",
     "@fastify/rate-limit": "^11.2.1",
+    "@zyvo/common": "workspace:*",
     "@zyvo/database": "workspace:*",
     "@zyvo/logger": "workspace:*",
     "dotenv": "^18.0.8",

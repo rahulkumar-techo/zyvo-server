@@ -46,3 +46,21 @@ Guiding principles, engineering standards, and sequential delivery milestones fo
 * **Timestamps:** Timestamps must be recorded in UTC as `timestamptz(6)`.
 * **UUIDs:** Primary keys for all business entities must use `UUIDv4`.
 * **Foreign Keys:** Use database-level constraints *only* within a domain schema. Across service boundaries, store plain UUID references to prevent distributed deadlocks and deployment coupling.
+
+---
+
+## 4. Centralized API Error Handling Standards
+
+* **Standard Error Contract:** All services return `{ code, error, message, statusCode, timestamp, endpoint, details? }`.
+* **Plugin Reuse:** Register `@zyvo/common`'s `registerErrorHandlerPlugin(app)`. Never create custom error handlers in services.
+* **Semantic Status Codes:**
+  - `401 Unauthorized`: For authentication failures (`UNAUTHENTICATED`, `INVALID_TOKEN`, `TOKEN_EXPIRED`, `INVALID_CREDENTIALS`, `INVALID_REFRESH_TOKEN`, `SESSION_EXPIRED`).
+  - `403 Forbidden`: For authorization/policy denial (`INSUFFICIENT_PERMISSIONS`, `ACCOUNT_DEACTIVATED`, `ACCOUNT_SUSPENDED`).
+  - `404 Not Found`: For missing routes (`ROUTE_NOT_FOUND`) and missing database entities (`USER_PROFILE_NOT_FOUND`, `RESOURCE_NOT_FOUND`).
+  - `400 Bad Request`: For validation and malformed request bodies (`VALIDATION_ERROR`, `INVALID_REQUEST_BODY`).
+  - `409 Conflict`: For duplicates and state conflicts (`EMAIL_ALREADY_EXISTS`, `PHONE_ALREADY_EXISTS`, `RESOURCE_CONFLICT`).
+  - `422 Unprocessable Content`: For domain/business rule violations (`BUSINESS_RULE_VIOLATION`).
+  - `429 Too Many Requests`: For rate limits (`TOO_MANY_REQUESTS`, `LOGIN_RATE_LIMIT_EXCEEDED`).
+  - `500/502/503/504`: For unexpected server, database, and infrastructure errors (`INTERNAL_SERVER_ERROR`, `DATABASE_ERROR`, `UPSTREAM_SERVICE_ERROR`, `SERVICE_UNAVAILABLE`, `GATEWAY_TIMEOUT`).
+* **Decoupled Architecture:** `@zyvo/common` has zero direct dependencies on `@zyvo/database` or `@prisma/client`.
+* **Zero Sensitive Leaks:** Database statements, stack traces, and credentials are never exposed in API responses.

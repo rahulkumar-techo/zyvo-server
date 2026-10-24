@@ -3,7 +3,10 @@ import type { FastifyInstance } from "fastify";
 import { config } from "../config/index.js";
 import {
   ErrorCodes,
-  AppError,
+  AuthenticationError,
+  ConflictError,
+  NotFoundError,
+  ValidationError,
   type User,
   type UserRecord,
   type RegisterDto,
@@ -26,13 +29,13 @@ export class AuthService {
   async register(dto: RegisterDto): Promise<User> {
     const existingPhone = await authRepository.findUserByPhone(dto.phone);
     if (existingPhone) {
-      throw new AppError(409, ErrorCodes.CONFLICT, "Phone number is already registered");
+      throw new ConflictError("Phone number is already registered", ErrorCodes.PHONE_ALREADY_EXISTS);
     }
 
     if (dto.email) {
       const existingEmail = await authRepository.findUserByEmail(dto.email);
       if (existingEmail) {
-        throw new AppError(409, ErrorCodes.CONFLICT, "Email is already registered");
+        throw new ConflictError("Email is already registered", ErrorCodes.EMAIL_ALREADY_EXISTS);
       }
     }
 
@@ -57,12 +60,12 @@ export class AuthService {
   async login(app: FastifyInstance, dto: LoginDto): Promise<AuthResponse> {
     const user = await authRepository.findUserByPhoneOrEmail(dto.phoneOrEmail);
     if (!user) {
-      throw new AppError(401, ErrorCodes.UNAUTHENTICATED, "Invalid credentials");
+      throw new AuthenticationError("Invalid email or password", ErrorCodes.INVALID_CREDENTIALS);
     }
 
     const isValidPassword = await verifyPassword(dto.password, user.passwordHash);
     if (!isValidPassword) {
-      throw new AppError(401, ErrorCodes.UNAUTHENTICATED, "Invalid credentials");
+      throw new AuthenticationError("Invalid email or password", ErrorCodes.INVALID_CREDENTIALS);
     }
 
     const sessionId = randomUUID();
@@ -99,7 +102,7 @@ export class AuthService {
 
   async refresh(app: FastifyInstance, dto: RefreshDto): Promise<AuthTokens> {
     if (!dto.refreshToken) {
-      throw new AppError(401, ErrorCodes.UNAUTHENTICATED, "Missing, invalid or expired token");
+      throw new AuthenticationError("Missing refresh token", ErrorCodes.INVALID_REFRESH_TOKEN);
     }
 
     const inputTokenHash = hashToken(dto.refreshToken);
@@ -110,13 +113,13 @@ export class AuthService {
         // Clean up expired session
         await authRepository.deleteSession(session.id);
       }
-      throw new AppError(401, ErrorCodes.UNAUTHENTICATED, "Missing, invalid or expired token");
+      throw new AuthenticationError("Invalid or expired refresh token", ErrorCodes.INVALID_REFRESH_TOKEN);
     }
 
     const user = await authRepository.findUserById(session.userId);
     if (!user) {
       await authRepository.deleteSession(session.id);
-      throw new AppError(401, ErrorCodes.UNAUTHENTICATED, "User no longer exists");
+      throw new AuthenticationError("User account no longer exists", ErrorCodes.INVALID_REFRESH_TOKEN);
     }
 
     // Token rotation: generate new refresh token and update session hash
@@ -159,10 +162,9 @@ export class AuthService {
       return { message: "Logged out successfully" };
     }
 
-    throw new AppError(
-      400,
-      ErrorCodes.VALIDATION_ERROR,
+    throw new ValidationError(
       "Current session or refresh token identifier required",
+      ErrorCodes.VALIDATION_ERROR,
     );
   }
 
@@ -177,7 +179,7 @@ export class AuthService {
   async getMe(userId: string): Promise<User> {
     const user = await authRepository.findUserById(userId);
     if (!user) {
-      throw new AppError(404, ErrorCodes.NOT_FOUND, "User not found");
+      throw new NotFoundError("User not found", ErrorCodes.USER_NOT_FOUND);
     }
 
     return sanitizeUser(user);
@@ -185,3 +187,4 @@ export class AuthService {
 }
 
 export const authService = new AuthService();
+

@@ -196,6 +196,9 @@ importers:
       '@fastify/rate-limit':
         specifier: ^11.2.1
         version: 11.2.1
+      '@zyvo/common':
+        specifier: workspace:*
+        version: link:../../packages/common
       '@zyvo/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -233,6 +236,9 @@ importers:
       '@fastify/rate-limit':
         specifier: ^11.2.1
         version: 11.2.1
+      '@zyvo/common':
+        specifier: workspace:*
+        version: link:../../packages/common
       '@zyvo/database':
         specifier: workspace:*
         version: link:../../packages/database
@@ -255,6 +261,68 @@ importers:
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  apps/user-service:
+    dependencies:
+      '@fastify/cookie':
+        specifier: ^11.1.3
+        version: 11.1.3
+      '@fastify/cors':
+        specifier: ^11.3.1
+        version: 11.3.1
+      '@fastify/jwt':
+        specifier: ^10.2.5
+        version: 10.2.5
+      '@fastify/rate-limit':
+        specifier: ^11.2.1
+        version: 11.2.1
+      '@zyvo/common':
+        specifier: workspace:*
+        version: link:../../packages/common
+      '@zyvo/database':
+        specifier: workspace:*
+        version: link:../../packages/database
+      '@zyvo/logger':
+        specifier: workspace:*
+        version: link:../../packages/logger
+      dotenv:
+        specifier: ^18.0.8
+        version: 18.0.8
+      fastify:
+        specifier: ^5.12.7
+        version: 5.12.7
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.5
+      '@zyvo/typescript-config':
+        specifier: workspace:*
+        version: link:../../packages/config-typescript
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+
+  packages/common:
+    dependencies:
+      '@fastify/jwt':
+        specifier: ^10.0.0
+        version: 10.2.5
+      fastify:
+        specifier: ^5.2.1
+        version: 5.12.7
+    devDependencies:
+      '@types/node':
+        specifier: ^26.6.5
+        version: 26.6.5
+      '@zyvo/typescript-config':
+        specifier: workspace:*
+        version: link:../config-typescript
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

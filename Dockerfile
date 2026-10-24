@@ -9,22 +9,27 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc ./
 COPY packages/config-typescript/package.json ./packages/config-typescript/
 COPY packages/logger/package.json              ./packages/logger/
 COPY packages/database/package.json            ./packages/database/
+COPY packages/common/package.json              ./packages/common/
 COPY apps/api-gateway/package.json             ./apps/api-gateway/
 COPY apps/auth-service/package.json            ./apps/auth-service/
+COPY apps/user-service/package.json            ./apps/user-service/
 RUN pnpm install --frozen-lockfile
 
 # ── Build all packages ───────────────────────────────────────────────────────
 FROM deps AS builder
 COPY . .
 
-# 1. Build logger
+# 1. Build logger & database
 RUN pnpm --filter @zyvo/logger build
-
-# 2. Build database package (using pre-generated Prisma client)
+RUN pnpm --filter @zyvo/database db:generate
 RUN pnpm --filter @zyvo/database build
+
+# 2. Build common package
+RUN pnpm --filter @zyvo/common build
 
 # 4. Build apps
 RUN pnpm --filter @zyvo/auth-service build 2>/dev/null || true
+RUN pnpm --filter @zyvo/user-service build 2>/dev/null || true
 RUN pnpm --filter @zyvo/api-gateway build 2>/dev/null || true
 
 # ── Auth Service image ───────────────────────────────────────────────────────
@@ -35,6 +40,16 @@ COPY --from=builder /app/apps/auth-service   ./apps/auth-service
 WORKDIR /app/apps/auth-service
 ENV NODE_ENV=production
 EXPOSE 4001
+CMD ["/app/node_modules/.bin/tsx", "src/server.ts"]
+
+# ── User Service image ───────────────────────────────────────────────────────
+FROM base AS user-service
+COPY --from=builder /app/node_modules        ./node_modules
+COPY --from=builder /app/packages            ./packages
+COPY --from=builder /app/apps/user-service   ./apps/user-service
+WORKDIR /app/apps/user-service
+ENV NODE_ENV=production
+EXPOSE 4002
 CMD ["/app/node_modules/.bin/tsx", "src/server.ts"]
 
 # ── API Gateway image ────────────────────────────────────────────────────────
