@@ -24,6 +24,7 @@ services:
     build:
       context: .
       target: auth-service
+      network: host
     container_name: zyvo-auth-service
     restart: unless-stopped
     ports:
@@ -47,6 +48,7 @@ services:
     build:
       context: .
       target: user-service
+      network: host
     container_name: zyvo-user-service
     restart: unless-stopped
     ports:
@@ -68,6 +70,7 @@ services:
     build:
       context: .
       target: api-gateway
+      network: host
     container_name: zyvo-api-gateway
     restart: unless-stopped
     ports:
