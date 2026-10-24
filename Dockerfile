@@ -1,5 +1,4 @@
 FROM node:22-alpine AS base
-RUN apk add --no-cache libc6-compat openssl ca-certificates
 RUN corepack enable && corepack prepare pnpm@latest --activate
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 WORKDIR /app
@@ -22,7 +21,7 @@ COPY . .
 
 # 1. Build logger & database
 RUN pnpm --filter @zyvo/logger build
-RUN for i in 1 2 3 4 5; do pnpm --filter @zyvo/database db:generate && break || (echo "Retrying Prisma generate ($i/5)..." && sleep 3); done
+RUN test -d packages/database/src/generated/client || pnpm --filter @zyvo/database db:generate
 RUN pnpm --filter @zyvo/database build
 
 # 2. Build common package
